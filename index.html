@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Device Management Platform</title>
+  
+  <!-- External Libraries -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==================== LOGIN PAGE ==================== -->
+  <div id="loginPage" class="login-container">
+    <div class="login-box">
+      <div class="logo">🏠</div>
+      <h1>IoT Platform Login</h1>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="Enter username" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <span>🔐 Login</span>
+        </button>
+      </form>
+      
+      <div class="demo-credentials">
+        <strong>🎯 Demo Credentials:</strong>
+        <div class="credential-item">
+          <span class="role-tag admin">ADMIN</span>
+          <code>admin / admin123</code>
+        </div>
+        <div class="credential-item">
+          <span class="role-tag operator">OPERATOR</span>
+          <code>operator / oper123</code>
+        </div>
+        <div class="credential-item">
+          <span class="role-tag viewer">VIEWER</span>
+          <code>viewer / view123</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN DASHBOARD ==================== -->
+  <div id="dashboard" class="dashboard">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-section">
+          <span class="logo-icon">🏠</span>
+          <h2>IoT Platform</h2>
+        </div>
+        <div class="user-info">
+          <div class="user-avatar">👤</div>
+          <div class="user-details">
+            <span id="currentUser" class="user-name">User</span>
+            <span id="userRole" class="role-badge">ROLE</span>
+          </div>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="overview">
+          <span class="nav-icon">📊</span>
+          <span>Overview</span>
+        </div>
+        <div class="nav-item" data-page="devices">
+          <span class="nav-icon">🔌</span>
+          <span>Devices</span>
+        </div>
+        <div class="nav-item" data-page="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Analytics</span>
+        </div>
+        <div class="nav-item" data-page="control">
+          <span class="nav-icon">🎮</span>
+          <span>Device Control</span>
+        </div>
+        <div class="nav-item" data-page="logs">
+          <span class="nav-icon">📝</span>
+          <span>Activity Logs</span>
+        </div>
+        <div class="nav-item" data-page="settings" id="settingsNav">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </div>
+      </nav>
+      
+      <button class="logout-btn" onclick="logout()">
+        <span>🚪</span>
+        Logout
+      </button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Connection Status Bar -->
+      <div class="connection-bar">
+        <div class="connection-status">
+          <div class="status-indicator disconnected" id="statusIndicator"></div>
+          <div class="status-text">
+            <span id="connectionText">Disconnected from MQTT Broker</span>
+            <span id="brokerInfo" class="broker-info"></span>
+          </div>
+        </div>
+        <div class="connection-actions">
+          <button class="btn-action btn-success" id="connectBtn" onclick="connectMQTT()">
+            🔌 Connect
+          </button>
+          <button class="btn-action btn-danger hidden" id="disconnectBtn" onclick="disconnectMQTT()">
+            ❌ Disconnect
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== OVERVIEW PAGE ==================== -->
+      <div id="overviewPage" class="page-content">
+        <div class="page-header">
+          <div>
+            <h1>Dashboard Overview</h1>
+            <p>Monitor and manage all your IoT devices</p>
+          </div>
+          <button class="btn-action btn-primary" onclick="refreshDashboard()">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #3b82f6;">🔌</div>
+            <div class="stat-details">
+              <h3>Total Devices</h3>
+              <div class="stat-value" id="totalDevices">0</div>
+              <div class="stat-change">Registered devices</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #10b981;">✅</div>
+            <div class="stat-details">
+              <h3>Online Devices</h3>
+              <div class="stat-value" id="onlineDevices">0</div>
+              <div class="stat-change">Active now</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f59e0b;">📤</div>
+            <div class="stat-details">
+              <h3>Commands Today</h3>
+              <div class="stat-value" id="commandsToday">0</div>
+              <div class="stat-change">Total sent</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #ef4444;">⚠️</div>
+            <div class="stat-details">
+              <h3>Alerts</h3>
+              <div class="stat-value" id="alertsCount">0</div>
+              <div class="stat-change">Require attention</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Device Overview -->
+        <div class="section-header">
+          <h2>📱 Quick Device Access</h2>
+          <a href="#" onclick="navigateToPage('devices')" class="link-action">View All →</a>
+        </div>
+        <div class="devices-grid" id="devicesOverview"></div>
+
+        <!-- Recent Activity -->
+        <div class="section-header">
+          <h2>📊 Recent Activity</h2>
+          <a href="#" onclick="navigateToPage('logs')" class="link-action">View All →</a>
+        </div>
+        <div class="activity-log">
+          <div id="recentActivity"></div>
+        </div>
+      </div>
+
+      <!-- ==================== DEVICES PAGE ==================== -->
+      <div id="devicesPage" class="page-content hidden">
+        <div class="page-header">
+          <div>
+            <h1>Device Management</h1>
+            <p>Add, edit, and monitor your devices</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-action btn-success" onclick="openAddDeviceModal()">
+              ➕ Add Device
+            </button>
+            <button class="btn-action" onclick="refreshDevices()">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Device Filters -->
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">All Devices</button>
+          <button class="filter-btn" data-filter="online">🟢 Online</button>
+          <button class="filter-btn" data-filter="offline">🔴 Offline</button>
+          <button class="filter-btn" data-filter="light">💡 Lights</button>
+          <button class="filter-btn" data-filter="ac">🌡️ AC</button>
+        </div>
+
+        <div class="devices-grid" id="devicesGrid"></div>
+      </div>
+
+      <!-- ==================== ANALYTICS PAGE ==================== -->
+      <div id="analyticsPage" class="page-content hidden">
+        <div class="page-header">
+          <div>
+            <h1>Analytics & Reports</h1>
+            <p>View performance metrics and insights</p>
+          </div>
+          <button class="btn-action" onclick="exportReport()">
+            📥 Export Report
+          </button>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>📊 Commands Sent (Last 7 Days)</h3>
+              <select class="chart-filter">
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+                <option>Last 3 Months</option>
+              </select>
+            </div>
+            <canvas id="commandsChart"></canvas>
+          </div>
+          
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>🔌 Device Status Distribution</h3>
+            </div>
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>⚡ Device Activity Timeline</h3>
+            </div>
+            <canvas id="activityChart"></canvas>
+          </div>
+          
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>📈 Response Time</h3>
+            </div>
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== DEVICE CONTROL PAGE ==================== -->
+      <div id="controlPage" class="page-content hidden">
+        <div class="page-header">
+          <div>
+            <h1>Device Control Center</h1>
+            <p>Send commands and control your devices</p>
+          </div>
+        </div>
+
+        <div class="control-panel">
+          <div class="form-group">
+            <label>🔌 Select Device</label>
+            <select id="controlDevice" onchange="updateCommandOptions()">
+              <option value="">Choose a device...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>🎮 Select Command</label>
+            <select id="controlCommand" onchange="showCommandParams()">
+              <option value="">Choose a command...</option>
+              <option value="turn_on">Turn ON</option>
+              <option value="turn_off">Turn OFF</option>
+              <option value="set_temperature">Set Temperature</option>
+              <option value="set_brightness">Set Brightness</option>
+              <option value="lock">Lock</option>
+              <option value="unlock">Unlock</option>
+            </select>
+          </div>
+
+          <div id="commandParams" class="command-params"></div>
+
+          <div class="control-actions">
+            <button class="btn btn-primary btn-large" onclick="sendCommand()">
+              📤 Send Command
+            </button>
+            <button class="btn btn-secondary" onclick="clearControlForm()">
+              🔄 Clear
+            </button>
+          </div>
+
+          <!-- Command Preview -->
+          <div class="command-preview">
+            <h4>📋 Command Preview</h4>
+            <pre id="commandPreview">Select a device and command to see preview</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== LOGS PAGE ==================== -->
+      <div id="logsPage" class="page-content hidden">
+        <div class="page-header">
+          <div>
+            <h1>Activity Logs</h1>
+            <p>View all system activities and events</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-action" onclick="exportLogs()">
+              📥 Export Logs
+            </button>
+            <button class="btn-action btn-danger" onclick="clearLogs()">
+              🗑️ Clear Logs
+            </button>
+          </div>
+        </div>
+
+        <!-- Log Filters -->
+        <div class="filter-bar">
+          <button class="filter-btn active" data-log-filter="all">All Logs</button>
+          <button class="filter-btn" data-log-filter="success">✅ Success</button>
+          <button class="filter-btn" data-log-filter="error">❌ Errors</button>
+          <button class="filter-btn" data-log-filter="warning">⚠️ Warnings</button>
+          <button class="filter-btn" data-log-filter="info">ℹ️ Info</button>
+        </div>
+
+        <div class="activity-log full-log">
+          <div id="fullActivityLog"></div>
+        </div>
+      </div>
+
+      <!-- ==================== SETTINGS PAGE ==================== -->
+      <div id="settingsPage" class="page-content hidden">
+        <div class="page-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Configure your IoT platform</p>
+          </div>
+        </div>
+
+        <div class="settings-container">
+          <div class="settings-section">
+            <h3>🌐 MQTT Broker Configuration</h3>
+            
+            <div class="form-group">
+              <label>Broker URL</label>
+              <input type="text" id="brokerUrl" value="ws://broker.hivemq.com:8000/mqtt" 
+                     placeholder="ws://broker.example.com:8000/mqtt">
+              <small>WebSocket URL for MQTT broker (must start with ws:// or wss://)</small>
+            </div>
+
+            <div class="form-group">
+              <label>Command Topic</label>
+              <input type="text" id="commandTopic" value="smarthome/commands" 
+                     placeholder="smarthome/commands">
+              <small>Topic for sending commands to devices</small>
+            </div>
+
+            <div class="form-group">
+              <label>Status Topic</label>
+              <input type="text" id="statusTopic" value="smarthome/status" 
+                     placeholder="smarthome/status">
+              <small>Topic for receiving device status updates</small>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="saveSettings()">
+                💾 Save Settings
+              </button>
+              <button class="btn btn-secondary" onclick="resetSettings()">
+                🔄 Reset to Default
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>👤 Profile Settings</h3>
+            
+            <div class="profile-info">
+              <div class="profile-item">
+                <strong>Username:</strong>
+                <span id="profileUsername"></span>
+              </div>
+              <div class="profile-item">
+                <strong>Role:</strong>
+                <span id="profileRole"></span>
+              </div>
+              <div class="profile-item">
+                <strong>Login Time:</strong>
+                <span id="loginTime"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>🎨 Appearance</h3>
+            
+            <div class="form-group">
+              <label>Theme</label>
+              <select id="themeSelect" onchange="changeTheme()">
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+                <option value="auto">🔄 Auto</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== ADD DEVICE MODAL ==================== -->
+  <div id="addDeviceModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>➕ Add New Device</h2>
+        <button class="close-modal" onclick="closeAddDeviceModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Device Name</label>
+          <input type="text" id="newDeviceName" placeholder="e.g., Living Room Light">
+        </div>
+
+        <div class="form-group">
+          <label>Device Type</label>
+          <select id="newDeviceType" onchange="updateDeviceIcon()">
+            <option value="light">💡 Light</option>
+            <option value="ac">🌡️ Air Conditioner</option>
+            <option value="door">🔒 Smart Lock</option>
+            <option value="camera">📹 Camera</option>
+            <option value="sensor">📊 Sensor</option>
+            <option value="fan">🌀 Fan</option>
+            <option value="tv">📺 Television</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="newDeviceLocation" placeholder="e.g., Living Room">
+        </div>
+
+        <div class="form-group">
+          <label>Device ID</label>
+          <input type="text" id="newDeviceId" placeholder="device-XXX">
+          <small>Unique identifier for the device</small>
+        </div>
+
+        <div class="form-group">
+          <label>Initial Status</label>
+          <select id="newDeviceStatus">
+            <option value="online">🟢 Online</option>
+            <option value="offline">🔴 Offline</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAddDeviceModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addDevice()">✅ Add Device</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
